@@ -28,9 +28,12 @@ jobs:
 
   runner-test:
     machine: true
-    resource_class: scramble/apps
+    resource_class: scramble/apps  # Ensure this matches the resource class in CircleCI
     steps:
-      - run: echo "Hi I'm on Runners!"
+      - checkout
+      - run:
+          name: Say Hello
+          command: echo "Hello, World! I'm running on a self-hosted runner!"
 
 commands:
   maybe_build_certs:
@@ -60,13 +63,15 @@ commands:
 
 # Define workflows
 workflows:
+  version: 2
+
+  # Setup workflow to generate dynamic config
   setup:
     jobs:
       - setup:
           filters: *all_tags
 
+  # Main testing workflow that runs on the self-hosted runner
   testing:
     jobs:
       - runner-test
-
-#testing
