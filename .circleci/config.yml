@@ -19,14 +19,14 @@ jobs:
   setup:
     executor: continuation/default
     steps:
-      - checkout
+      - checkout # checkout code
       - maybe_build_certs
-      - run:
+      - run: # run a command
           name: Generate config
           command: |
             tools/circle-generate-config.sh generated_config.yml
       - continuation/continue:
-          configuration_path: generated_config.yml # Use dynamically generated config
+          configuration_path: generated_config.yml # use newly generated config to continue
 
   runner-test:
     docker:
@@ -37,8 +37,18 @@ jobs:
           name: Say Hello
           command: echo "Hello, World! I'm running on a self-hosted runner!"
       - run:
-          name: List Files
-          command: ls -la
+          name: Creating Dummy Artifacts
+          working_directory: /tmp
+          command: |
+            echo "my artifact file" > /tmp/artifact-1
+            mkdir /tmp/artifacts
+            echo "my artifact files in a dir" > /tmp/artifacts/artifact-2
+      - store_artifacts:
+          path: /tmp/artifact-1
+          destination: artifact-file
+      - store_artifacts:
+          path: /tmp/artifacts
+          destination: artifacts-dir
 
 commands:
   maybe_build_certs:
@@ -68,14 +78,11 @@ commands:
 
 # Define workflows
 workflows:
-  # Setup workflow to generate dynamic config
   setup:
     jobs:
       - setup:
           filters: *all_tags
 
-  # Build workflow to run directly on self-hosted runner
   build-workflow:
     jobs:
       - runner-test
-#testing
