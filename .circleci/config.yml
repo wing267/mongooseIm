@@ -1,88 +1,31 @@
+# Use the latest 2.1 version of CircleCI pipeline process engine.
+# See: https://circleci.com/docs/configuration-reference
 version: 2.1
 
-references:
-  - &CERT_KEY certs-cache-{{ checksum "certs_cache_key" }}-v3
-
-# Enable dynamic configuration
-setup: true
-
-filters: &all_tags
-  tags:
-    only: /^\d+\.\d+\.\d+([a-z0-9\-\+])*/
-
-# Include the continuation orb for dynamic configuration
-orbs:
-  continuation: circleci/continuation@0.2.0
-
-# Define jobs
+# Define a job to be invoked later in a workflow.
+# See: https://circleci.com/docs/jobs-steps/#jobs-overview & https://circleci.com/docs/configuration-reference/#jobs
 jobs:
-  setup:
-    executor: continuation/default
-    steps:
-      - checkout # checkout code
-      - maybe_build_certs
-      - run: # run a command
-          name: Generate config
-          command: |
-            tools/circle-generate-config.sh generated_config.yml
-      - continuation/continue:
-          configuration_path: generated_config.yml # use newly generated config to continue
-
-  runner-test:
+  say-hello:
+    # Specify the execution environment. You can specify an image from Docker Hub or use one of our convenience images from CircleCI's Developer Hub.
+    # See: https://circleci.com/docs/executor-intro/ & https://circleci.com/docs/configuration-reference/#executor-job
     docker:
-      - image: cimg/base:current  # Use CircleCI's base image for container runners
-    resource_class: scramble/apps  # Ensure this matches your self-hosted runner's resource class
-    steps:
-      - run:
-          name: Say Hello
-          command: echo "Hello, World! I'm running on a self-hosted runner!"
-      - run:
-          name: Creating Dummy Artifacts
-          working_directory: /tmp
-          command: |
-            echo "my artifact file" > /tmp/artifact-1
-            mkdir /tmp/artifacts
-            echo "my artifact files in a dir" > /tmp/artifacts/artifact-2
-      - store_artifacts:
-          path: /tmp/artifact-1
-          destination: artifact-file
-      - store_artifacts:
-          path: /tmp/artifacts
-          destination: artifacts-dir
+      # Specify the version you desire here
+      # See: https://circleci.com/developer/images/image/cimg/base
+      - image: cimg/base:current
 
-commands:
-  maybe_build_certs:
+    # Add steps to the job
+    # See: https://circleci.com/docs/jobs-steps/#steps-overview & https://circleci.com/docs/configuration-reference/#steps
     steps:
+      # Checkout the code as the first step.
+      - checkout
       - run:
-          name: Prepare cache key
-          command: tools/make-certs-cache-key.sh > certs_cache_key && cat certs_cache_key
-      - restore_cache:
-          name: Restore certificates
-          key: *CERT_KEY
-      - run:
-          name: Build certificates if not cached
-          command: test -f tools/ssl/mongooseim/key.pem || make certs
-      - run:
-          name: Print cert hashes for debugging
-          command: find tools/ssl -type f -exec md5sum {} \; | sort
-      - run:
-          name: Continue if certificate exists
-          command: test -f tools/ssl/mongooseim/key.pem
-      - save_cache:
-          name: Cache built certs
-          key: *CERT_KEY
-          paths:
-            - ~/project/tools/ssl/ca
-            - ~/project/tools/ssl/ca-clients
-            - ~/project/tools/ssl/mongooseim
+          name: "Say hello"
+          command: "echo Hello, World!"
 
-# Define workflows
+# Orchestrate jobs using workflows
+# See: https://circleci.com/docs/workflows/ & https://circleci.com/docs/configuration-reference/#workflows
 workflows:
-  setup:
+  say-hello-workflow: # This is the name of the workflow, feel free to change it to better match your workflow.
+    # Inside the workflow, you define the jobs you want to run.
     jobs:
-      - setup:
-          filters: *all_tags
-
-  build-workflow:
-    jobs:
-      - runner-test
+      - say-hello
