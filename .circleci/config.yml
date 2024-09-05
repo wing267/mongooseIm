@@ -36,6 +36,9 @@ jobs:
       - run:
           name: Say Hello
           command: echo "Hello, World! I'm running on a self-hosted runner!"
+      - run:
+          name: List Files
+          command: ls -la
 
 commands:
   maybe_build_certs:
