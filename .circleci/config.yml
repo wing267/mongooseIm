@@ -3,30 +3,39 @@ version: 2.1
 references:
   - &CERT_KEY certs-cache-{{ checksum "certs_cache_key" }}-v3
 
-# this allows you to use CircleCI's dynamic configuration feature
+# Enable dynamic configuration
 setup: true
 
 filters: &all_tags
   tags:
     only: /^\d+\.\d+\.\d+([a-z0-9\-\+])*/
 
-# the continuation orb is required in order to use dynamic configuration
+# Include the continuation orb for dynamic configuration
 orbs:
   continuation: circleci/continuation@0.2.0
 
-# our defined job, and its steps
+# Define jobs
 jobs:
   setup:
     executor: continuation/default
     steps:
-      - checkout # checkout code
+      - checkout
       - maybe_build_certs
-      - run: # run a command
+      - run:
           name: Generate config
           command: |
             tools/circle-generate-config.sh generated_config.yml
       - continuation/continue:
-          configuration_path: generated_config.yml # use newly generated config to continue
+          configuration_path: generated_config.yml # Use dynamically generated config
+
+  runner-test:
+    docker:
+      - image: cimg/base:current  # Use CircleCI's base image for container runners
+    resource_class: scramble/apps  # Ensure this matches your self-hosted runner's resource class
+    steps:
+      - run:
+          name: Say Hello
+          command: echo "Hello, World! I'm running on a self-hosted runner!"
 
 commands:
   maybe_build_certs:
@@ -38,8 +47,6 @@ commands:
           name: Restore certificates
           key: *CERT_KEY
       - run:
-          # We do not rebuild certificates to ensure that the cached version
-          # is the master-copy
           name: Build certificates if not cached
           command: test -f tools/ssl/mongooseim/key.pem || make certs
       - run:
@@ -56,9 +63,15 @@ commands:
             - ~/project/tools/ssl/ca-clients
             - ~/project/tools/ssl/mongooseim
 
-# our single workflow, that triggers the setup job defined above
+# Define workflows
 workflows:
+  # Setup workflow to generate dynamic config
   setup:
     jobs:
       - setup:
           filters: *all_tags
+
+  # Build workflow to run directly on self-hosted runner
+  build-workflow:
+    jobs:
+      - runner-test
